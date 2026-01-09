@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RythmCast - Analyse Spotify</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #121212;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .app-name {
+            text-align: center;
+            color: #1DB954;
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        .app-tagline {
+            text-align: center;
+            color: #b3b3b3;
+            font-size: 1.3em;
+            margin-bottom: 50px;
+        }
+
+        .features {
+            background: #181818;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .features h2 {
+            color: white;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .feature-list {
+            list-style: none;
+            color: #b3b3b3;
+        }
+
+        .feature-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #282828;
+            font-size: 1.1em;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li:before {
+            content: "✓ ";
+            color: #1DB954;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .login-section {
+            background: #181818;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .login-section.hidden {
+            display: none;
+        }
+
+        .login-section h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .login-button {
+            background: #1DB954;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .login-button:hover {
+            background: #1ed760;
+        }
+
+        .tracks-section {
+            display: none;
+        }
+
+        .tracks-section.visible {
+            display: block;
+        }
+
+        .logout-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .logout-button:hover {
+            background: #ff3838;
+        }
+
+        .tracks-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .track-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .track-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .track-image {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            background: #f0f0f0;
+        }
+
+        .track-info {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .track-rank {
+            font-size: 0.8em;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .track-name {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .track-artist {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .track-album {
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 3px;
+        }
+
+        .play-button {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1DB954;
+            border: none;
+            cursor: pointer;
+            color: white;
+            font-size: 1.2em;
+            transition: background 0.3s ease;
+        }
+
+        .play-button:hover {
+            background: #1ed760;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="app-name">RythmCast</div>
+        <div class="app-tagline">Analyse tes statistiques musicales Spotify</div>
+
+        <div class="features">
+            <h2>Fonctionnalites</h2>
+            <ul class="feature-list">
+                <li>Consulte tes top tracks et artistes preferes</li>
+                <li>Visualise ton historique d'ecoute</li>
+                <li>Genere des playlists personnalisees</li>
+                <li>Mode conduite intelligent selon la meteo et vitesse</li>
+                <li>Sauvegarde directement sur Spotify</li>
+            </ul>
+        </div>
+
+        <button class="logout-button hidden" id="logoutBtn">Deconnexion</button>
+
+        <div class="login-section" id="loginSection">
+            <h2>Connecte-toi pour commencer</h2>
+            <button class="login-button" onclick="loginWithSpotify()">Se connecter avec Spotify</button>
+        </div>
+
+        <div class="tracks-section" id="tracksSection">
+            <div id="errorContainer"></div>
+            <div id="loadingContainer" class="loading" style="display: none;">Chargement de vos top tracks...</div>
+            <div class="tracks-list" id="tracksList"></div>
+        </div>
+    </div>
+
+    <script>
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token') || localStorage.getItem('spotify_token');
+        const userId = urlParams.get('user_id') || localStorage.getItem('user_id');
+
+        if (token) {
+            localStorage.setItem('spotify_token', token);
+            if (urlParams.get('user_id')) {
+                localStorage.setItem('user_id', urlParams.get('user_id'));
+            }
+            
+            window.history.replaceState({}, document.title, window.location.pathname);
+            showTracks();
+        }
+
+        function loginWithSpotify() {
+            window.location.href = '/api/spotify/login';
+        }
+
+        function logout() {
+            localStorage.removeItem('spotify_token');
+            localStorage.removeItem('user_id');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('tracksSection').classList.remove('visible');
+            document.getElementById('logoutBtn').classList.add('hidden');
+        }
+
+        async function showTracks() {
+            const token = localStorage.getItem('spotify_token');
+            const userId = localStorage.getItem('user_id');
+
+            if (!token) {
+                return;
+            }
+
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('tracksSection').classList.add('visible');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('logoutBtn').onclick = logout;
+
+            const loadingContainer = document.getElementById('loadingContainer');
+            const errorContainer = document.getElementById('errorContainer');
+            const tracksList = document.getElementById('tracksList');
+
+            loadingContainer.style.display = 'block';
+            errorContainer.innerHTML = '';
+            tracksList.innerHTML = '';
+
+            try {
+                const response = await fetch(`/api/spotify/top-tracks?userId=${userId || ''}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erreur lors du chargement des tracks');
+                }
+
+                const data = await response.json();
+                loadingContainer.style.display = 'none';
+
+                data.tracks.forEach((track, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'track-card';
+                    card.innerHTML = `
+                        <img src="${track.imageUrl || 'https://via.placeholder.com/100'}" alt="${track.name}" class="track-image">
+                        <div class="track-info">
+                            <div class="track-rank">#${index + 1}</div>
+                            <div class="track-name">${track.name}</div>
+                            <div class="track-artist">${track.artist}</div>
+                            <div class="track-album">${track.album}</div>
+                        </div>
+                        <button class="play-button" onclick="playTrack('${track.uri}')">▶</button>
+                    `;
+                    tracksList.appendChild(card);
+                });
+            } catch (error) {
+                loadingContainer.style.display = 'none';
+                errorContainer.innerHTML = `<div class="error">${error.message}</div>`;
+                console.error('Error:', error);
+            }
+        }
+
+        function playTrack(uri) {
+            window.open(uri, '_blank');
+        }
+    </script>
+</body>
+</html>

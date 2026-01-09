@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ma Musique - Spotify Stats</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body { font-family: Arial, sans-serif; background: #121212; min-height: 100vh; padding: 10px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 20px; }
+        .header h1 { font-size: 2em; margin-bottom: 5px; }
+        .header p { font-size: 1em; opacity: 0.8; }
+        .profile-card { background: #181818; border-radius: 10px; padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px; }
+        .profile-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #1DB954; }
+        .profile-info { flex: 1; }
+        .profile-name { font-size: 1.5em; font-weight: bold; color: #fff; margin-bottom: 5px; }
+        .profile-stats { display: flex; gap: 15px; margin-top: 10px; }
+        .stat-item { display: flex; flex-direction: column; }
+        .stat-value { font-size: 1.2em; font-weight: bold; color: #1DB954; }
+        .stat-label { font-size: 0.8em; color: #666; }
+        .premium-badge { background: #1DB954; color: white; padding: 3px 10px; border-radius: 10px; font-size: 0.8em; }
+        .section { background: #181818; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+        .section-title { font-size: 1.3em; font-weight: bold; color: #fff; margin-bottom: 15px; border-left: 3px solid #1DB954; padding-left: 10px; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; }
+        .track-card, .artist-card { background: #282828; border-radius: 8px; padding: 10px; display: flex; gap: 10px; cursor: pointer; }
+        .track-card:hover, .artist-card:hover { background: #333; }
+
+        .card-actions { display: flex; flex-direction: column; gap: 5px; margin-left: auto; }
+        .play-btn, .spotify-btn { background: #1DB954; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1em; }
+        .play-btn:hover, .spotify-btn:hover { background: #1ed760; }
+        .spotify-btn { background: #535353; }
+
+        .track-image, .artist-image { width: 60px; height: 60px; border-radius: 5px; object-fit: cover; }
+        .artist-image { border-radius: 50%; }
+        .card-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+        .card-rank { font-size: 0.7em; color: #999; margin-bottom: 3px; }
+        .card-name { font-size: 0.95em; font-weight: bold; color: #fff; margin-bottom: 3px; }
+        .card-artist { color: #b3b3b3; font-size: 0.85em; }
+        .card-genres { color: #1DB954; font-size: 0.8em; margin-top: 3px; }
+        .card-stats { display: flex; gap: 10px; margin-top: 3px; font-size: 0.8em; color: #999; }
+
+        .loading { text-align: center; color: white; font-size: 1em; padding: 20px; }
+        .error { background: #ff4757; color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        .logout-button { position: fixed; top: 10px; right: 10px; background: #ff4757; color: white; border: none; padding: 8px 15px; border-radius: 15px; cursor: pointer; font-size: 0.9em; }
+        .logout-button:hover { background: #ff3838; }
+
+        .tab-container { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab { background: #282828; color: #b3b3b3; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
+        .tab.active { background: #1DB954; color: white; }
+        .tab:hover { background: #1ed760; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .playlist-generator { background: #1DB954; border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 20px; }
+        .playlist-title { font-size: 1.5em; font-weight: bold; color: white; margin-bottom: 8px; }
+        .playlist-description { color: white; opacity: 0.9; margin-bottom: 15px; font-size: 0.95em; }
+        .generate-btn { background: white; color: #1DB954; border: none; padding: 10px 25px; border-radius: 20px; font-size: 1em; font-weight: bold; cursor: pointer; }
+        .generate-btn:hover { background: #f0f0f0; }
+        .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .save-playlist-btn, .spotify-link-btn { background: #1DB954; color: white; border: none; padding: 8px 20px; border-radius: 15px; font-size: 0.9em; cursor: pointer; margin-top: 10px; text-decoration: none; display: inline-block; }
+        .save-playlist-btn:hover, .spotify-link-btn:hover { background: #1ed760; }
+
+        .playlist-result { background: #282828; border-radius: 8px; padding: 15px; margin-top: 15px; text-align: left; }
+        .playlist-result h3 { color: white; margin-bottom: 10px; font-size: 1.1em; }
+        .playlist-result ul { list-style: none; }
+        .playlist-result li { color: #b3b3b3; padding: 8px; border-bottom: 1px solid #404040; font-size: 0.9em; }
+        .playlist-result li:last-child { border-bottom: none; }
+
+        .generator-tabs { display: flex; gap: 8px; margin: 15px 0; justify-content: center; }
+        .generator-tab { background: #282828; color: white; border: 2px solid transparent; padding: 8px 20px; border-radius: 15px; cursor: pointer; font-size: 0.9em; }
+        .generator-tab.active { background: #fff; color: #1DB954; border-color: #fff; }
+        .generator-tab:hover { border-color: #1DB954; }
+        .generator-content { display: none; }
+        .generator-content.active { display: block; }
+
+        .smart-form { background: #282828; border-radius: 8px; padding: 15px; margin: 15px 0; max-width: 400px; margin-left: auto; margin-right: auto; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; color: white; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+        .form-group select, .form-group input[type="number"], .form-group input[type="time"] { width: 100%; padding: 8px; border: 1px solid #404040; border-radius: 5px; background: #181818; color: white; font-size: 0.9em; }
+        .form-group select:focus, .form-group input:focus { outline: none; border-color: #1DB954; }
+        .form-group input[type="range"] { width: 100%; height: 6px; border-radius: 3px; background: #404040; outline: none; -webkit-appearance: none; }
+        .form-group input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #1DB954; cursor: pointer; }
+        .form-group input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #1DB954; cursor: pointer; border: none; }
+
+        .speed-display { text-align: center; color: #1DB954; font-size: 1.1em; font-weight: bold; margin-top: 8px; }
+        .auto-detect-btn { background: #535353; color: white; border: none; padding: 8px 15px; border-radius: 15px; cursor: pointer; width: 100%; font-size: 0.9em; margin-top: 8px; }
+        .auto-detect-btn:hover { background: #666666; }
+
+        .audio-player { position: fixed; bottom: 0; left: 0; right: 0; background: #181818; padding: 10px; display: none; align-items: center; gap: 10px; z-index: 1000; }
+        .audio-player.active { display: flex; }
+        .player-info { display: flex; gap: 10px; flex: 1; align-items: center; }
+        .player-image { width: 40px; height: 40px; border-radius: 3px; object-fit: cover; }
+        .player-text { color: white; }
+        .player-name { font-weight: bold; font-size: 0.9em; }
+        .player-artist { font-size: 0.8em; color: #b3b3b3; }
+        .player-controls { display: flex; gap: 8px; }
+        .player-btn { background: #1DB954; border: none; color: white; font-size: 1.1em; cursor: pointer; padding: 8px 15px; border-radius: 20px; }
+        .player-btn:hover { background: #1ed760; }
+        .close-player { background: #ff4757; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8em; }
+        .close-player:hover { background: #ff3838; }
+
+        @media (max-width: 768px) {
+            .profile-card {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .profile-stats {
+                justify-content: center;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="logout-button" onclick="logout()">Déconnexion</button>
+
+    <div class="container">
+        <div class="header">
+            <h1>Ton Profil Musical</h1>
+            <p>Découvre ce que tu écoutes vraiment</p>
+        </div>
+
+        <div id="errorContainer"></div>
+        <div id="loadingContainer" class="loading" style="display: none;">Chargement de vos données...</div>
+
+        
+        <div id="profileSection" style="display: none;">
+            <div class="profile-card" id="profileCard"></div>
+        </div>
+
+        
+        <div id="tabsSection" style="display: none;">
+            <div class="tab-container">
+                <button class="tab active" onclick="switchTab('tracks')">Tes Top Hits</button>
+                <button class="tab" onclick="switchTab('artists')">Tes Artistes Préférés</button>
+                <button class="tab" onclick="switchTab('recent')">Dernières Écoutes</button>
+                <button class="tab" onclick="switchTab('generator')">Créer une Playlist</button>
+            </div>
+
+            
+            <div id="tracks-tab" class="tab-content active">
+                <div class="section">
+                    <div class="section-title">Tes 20 Tracks les Plus Ecoutees</div>
+                    <div class="grid" id="topTracksList"></div>
+                </div>
+            </div>
+
+            
+            <div id="artists-tab" class="tab-content">
+                <div class="section">
+                    <div class="section-title">Les 10 Artistes que tu Suis le Plus</div>
+                    <div class="grid" id="topArtistsList"></div>
+                </div>
+            </div>
+
+            
+            <div id="recent-tab" class="tab-content">
+                <div class="section">
+                    <div class="section-title">Récemment, tu Écoutais...</div>
+                    <div class="grid" id="recentTracksList"></div>
+                </div>
+            </div>
+
+            
+            <div id="generator-tab" class="tab-content">
+                <div class="playlist-generator">
+                    <div class="playlist-title">Créateur de Playlist</div>
+                    
+                    
+                    <div class="generator-tabs">
+                        <button class="generator-tab active" onclick="switchGeneratorType('simple')">Simple</button>
+                        <button class="generator-tab" onclick="switchGeneratorType('smart')">Mode Conduite</button>
+                    </div>
+
+                    
+                    <div id="simple-generator" class="generator-content active">
+                        <div class="playlist-description">
+                            Sélectionne tes morceaux préférés du moment
+                        </div>
+                        <button class="generate-btn" id="generateBtn" onclick="generatePlaylist()">Générer ma Playlist</button>
+                    </div>
+
+                    
+                    <div id="smart-generator" class="generator-content">
+                        <div class="playlist-description">
+                            Adapte ta musique à ta route - météo, heure, vitesse
+                        </div>
+                        
+                        <div class="smart-form">
+                            <div class="form-group">
+                                <label>Météo actuelle</label>
+                                <select id="weatherSelect">
+                                    <option value="clear">Ensoleillé</option>
+                                    <option value="clouds">Nuageux</option>
+                                    <option value="rain">Pluie</option>
+                                    <option value="drizzle">Bruine</option>
+                                    <option value="thunderstorm">Orage</option>
+                                    <option value="snow">Neige</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Température (°C)</label>
+                                <input type="number" id="tempInput" value="20" min="-20" max="45">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Heure actuelle</label>
+                                <input type="time" id="timeInput" value="12:00">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Vitesse (km/h)</label>
+                                <input type="range" id="speedInput" min="0" max="150" value="90" oninput="updateSpeedDisplay(this.value)">
+                                <div class="speed-display" id="speedDisplay">90 km/h</div>
+                            </div>
+
+                            <button class="auto-detect-btn" onclick="autoDetect()">Détection automatique</button>
+                        </div>
+                        
+                        <button class="generate-btn" id="smartGenerateBtn" onclick="generateSmartPlaylist()">Générer la Playlist</button>
+                    </div>
+
+                    <div id="playlistResult"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div class="audio-player" id="audioPlayer">
+        <div class="player-info">
+            <img src="" alt="" class="player-image" id="playerImage">
+            <div class="player-text">
+                <div class="player-name" id="playerName"></div>
+                <div class="player-artist" id="playerArtist"></div>
+            </div>
+        </div>
+        <div class="player-controls">
+            <button class="player-btn" id="playPauseBtn" onclick="togglePlayPause()">▶</button>
+        </div>
+        <button class="close-player" onclick="closePlayer()">Fermer</button>
+        <audio id="audioElement" style="display: none;"></audio>
+    </div>
+
+    <script>
+        const token = new URLSearchParams(window.location.search).get('token') || localStorage.getItem('spotify_token');
+        const userId = new URLSearchParams(window.location.search).get('user_id') || localStorage.getItem('user_id');
+
+        let currentAudio = null;
+
+        if (!token || !userId) {
+            window.location.href = '/';
+        }
+
+        if (new URLSearchParams(window.location.search).get('token')) {
+            localStorage.setItem('spotify_token', token);
+            localStorage.setItem('user_id', userId);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        let currentTab = 'tracks';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
+        function logout() {
+            localStorage.removeItem('spotify_token');
+            localStorage.removeItem('user_id');
+            window.location.href = '/';
+        }
+
+        async function loadProfile() {
+            try {
+                const response = await fetch(`/api/spotify/profile?userId=${userId}`);
+                if (!response.ok) throw new Error('Erreur lors du chargement du profil');
+                
+                const data = await response.json();
+                const profile = data.profile;
+
+                document.getElementById('profileCard').innerHTML = `
+                    <img src="${profile.imageUrl || 'https://via.placeholder.com/120'}" alt="${profile.name}" class="profile-avatar">
+                    <div class="profile-info">
+                        <div class="profile-name">${profile.name}</div>
+                        ${profile.product === 'premium' ? '<span class="premium-badge">Premium</span>' : ''}
+                        <div class="profile-stats">
+                            <div class="stat-item">
+                                <div class="stat-value">${profile.followers}</div>
+                                <div class="stat-label">Abonnés</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${profile.country}</div>
+                                <div class="stat-label">Pays</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('profileSection').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading profile:', error);
+            }
+        }
+
+        async function loadTopTracks() {
+            try {
+                const response = await fetch(`/api/spotify/top-tracks?userId=${userId}`);
+                if (!response.ok) throw new Error('Erreur lors du chargement des tracks');
+                
+                const data = await response.json();
+                const tracksList = document.getElementById('topTracksList');
+                tracksList.innerHTML = '';
+
+                data.tracks.forEach((track, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'track-card';
+                    card.innerHTML = `
+                        <img src="${track.imageUrl || 'https://via.placeholder.com/80'}" alt="${track.name}" class="track-image">
+                        <div class="card-info">
+                            <div class="card-rank">#${index + 1}</div>
+                            <div class="card-name">${track.name}</div>
+                            <div class="card-artist">${track.artist}</div>
+                            <div class="card-artist">${track.album}</div>
+                        </div>
+                        <div class="card-actions">
+                            ${track.previewUrl ? `<button class="play-btn" onclick="playPreview('${track.previewUrl}', '${track.name}', '${track.artist}', '${track.imageUrl}')">▶</button>` : ''}
+                            <button class="spotify-btn" onclick="window.open('${track.spotifyUrl}', '_blank')" title="Ouvrir dans Spotify">♫</button>
+                        </div>
+                    `;
+                    tracksList.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading top tracks:', error);
+            }
+        }
+
+        async function loadTopArtists() {
+            try {
+                const response = await fetch(`/api/spotify/top-artists?userId=${userId}`);
+                if (!response.ok) throw new Error('Erreur lors du chargement des artistes');
+                
+                const data = await response.json();
+                const artistsList = document.getElementById('topArtistsList');
+                artistsList.innerHTML = '';
+
+                data.artists.forEach((artist, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'artist-card';
+                    card.innerHTML = `
+                        <img src="${artist.imageUrl || 'https://via.placeholder.com/80'}" alt="${artist.name}" class="artist-image">
+                        <div class="card-info">
+                            <div class="card-rank">#${index + 1}</div>
+                            <div class="card-name">${artist.name}</div>
+                            <div class="card-genres">${artist.genres.slice(0, 3).join(', ')}</div>
+                            <div class="card-stats">
+                                <span>Popularité: ${artist.popularity}/100</span>
+                                <span>Abonnés: ${artist.followers.toLocaleString()}</span>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="spotify-btn" onclick="window.open('${artist.spotifyUrl}', '_blank')">Voir Profil</button>
+                        </div>
+                    `;
+                    artistsList.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading top artists:', error);
+            }
+        }
+
+        async function loadRecentlyPlayed() {
+            try {
+                const response = await fetch(`/api/spotify/recently-played?userId=${userId}`);
+                if (!response.ok) throw new Error('Erreur lors du chargement des morceaux récents');
+                
+                const data = await response.json();
+                const recentList = document.getElementById('recentTracksList');
+                recentList.innerHTML = '';
+
+                data.tracks.forEach((track, index) => {
+                    const playedAt = new Date(track.playedAt);
+                    const timeAgo = getTimeAgo(playedAt);
+
+                    const card = document.createElement('div');
+                    card.className = 'track-card';
+                    card.innerHTML = `
+                        <img src="${track.imageUrl || 'https://via.placeholder.com/80'}" alt="${track.name}" class="track-image">
+                        <div class="card-info">
+                            <div class="card-rank">${timeAgo}</div>
+                            <div class="card-name">${track.name}</div>
+                            <div class="card-artist">${track.artist}</div>
+                            <div class="card-artist">${track.album}</div>
+                        </div>
+                    `;
+                    recentList.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading recently played:', error);
+            }
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            const intervals = {
+                an: 31536000,
+                mois: 2592000,
+                jour: 86400,
+                heure: 3600,
+                minute: 60
+            };
+
+            for (const [name, value] of Object.entries(intervals)) {
+                const interval = Math.floor(seconds / value);
+                if (interval >= 1) {
+                    return `Il y a ${interval} ${name}${interval > 1 ? 's' : ''}`;
+                }
+            }
+            return 'À l\'instant';
+        }
+
+        function playPreview(url, name, artist, imageUrl) {
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audioElement = document.getElementById('audioElement');
+            const playerImage = document.getElementById('playerImage');
+            const playerName = document.getElementById('playerName');
+            const playerArtist = document.getElementById('playerArtist');
+            const playPauseBtn = document.getElementById('playPauseBtn');
+
+            if (currentAudio && currentAudio.src === url && !currentAudio.paused) {
+                currentAudio.pause();
+                return;
+            }
+
+            if (currentAudio) {
+                currentAudio.pause();
+            }
+
+            currentAudio = audioElement;
+            currentAudio.src = url;
+            currentAudio.play();
+
+            playerImage.src = imageUrl || 'https://via.placeholder.com/50';
+            playerName.textContent = name;
+            playerArtist.textContent = artist;
+            playPauseBtn.textContent = '⏸';
+
+            audioPlayer.classList.add('active');
+
+            currentAudio.onended = () => {
+                playPauseBtn.textContent = '▶';
+            };
+        }
+
+        function togglePlayPause() {
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            if (currentAudio) {
+                if (currentAudio.paused) {
+                    currentAudio.play();
+                    playPauseBtn.textContent = '⏸';
+                } else {
+                    currentAudio.pause();
+                    playPauseBtn.textContent = '▶';
+                }
+            }
+        }
+
+        function closePlayer() {
+            const audioPlayer = document.getElementById('audioPlayer');
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.src = '';
+            }
+            audioPlayer.classList.remove('active');
+        }
+
+        async function loadAll() {
+            document.getElementById('loadingContainer').style.display = 'block';
+            
+            await loadProfile();
+            await loadTopTracks();
+            await loadTopArtists();
+            await loadRecentlyPlayed();
+            
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('tabsSection').style.display = 'block';
+
+            // Set current time
+            const now = new Date();
+            const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('timeInput').value = timeString;
+        }
+
+        function switchGeneratorType(type) {
+            const tabs = document.querySelectorAll('.generator-tab');
+            const contents = document.querySelectorAll('.generator-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            if (type === 'simple') {
+                tabs[0].classList.add('active');
+                document.getElementById('simple-generator').classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('smart-generator').classList.add('active');
+            }
+        }
+
+        function updateSpeedDisplay(value) {
+            document.getElementById('speedDisplay').textContent = value + ' km/h';
+        }
+
+        async function autoDetect() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Détection en cours...';
+
+            try {
+                // Get current time
+                const now = new Date();
+                const timeString = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+                document.getElementById('timeInput').value = timeString;
+
+                // Try to get location and weather
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(async (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+
+                        try {
+                            // Use Open-Meteo API (free, no API key needed)
+                            const weatherResponse = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&temperature_unit=celsius`);
+                            
+                            if (weatherResponse.ok) {
+                                const weatherData = await weatherResponse.json();
+                                const temp = weatherData.current_weather.temperature;
+                                const weatherCode = weatherData.current_weather.weathercode;
+
+                                document.getElementById('tempInput').value = Math.round(temp);
+                                
+                                // Map WMO weather codes to our options
+                                let weatherCondition = 'clear';
+                                if (weatherCode === 0 || weatherCode === 1) weatherCondition = 'clear';
+                                else if (weatherCode === 2 || weatherCode === 3) weatherCondition = 'clouds';
+                                else if (weatherCode >= 51 && weatherCode <= 57) weatherCondition = 'drizzle';
+                                else if (weatherCode >= 61 && weatherCode <= 67) weatherCondition = 'rain';
+                                else if (weatherCode >= 71 && weatherCode <= 77) weatherCondition = 'snow';
+                                else if (weatherCode >= 80 && weatherCode <= 99) weatherCondition = 'thunderstorm';
+                                
+                                document.getElementById('weatherSelect').value = weatherCondition;
+                                
+                                btn.textContent = '✓ Détecté !';
+                            } else {
+                                throw new Error('Weather API failed');
+                            }
+                        } catch (error) {
+                            console.error('Weather detection failed:', error);
+                            btn.textContent = '✓ Heure mise à jour';
+                            // Set reasonable defaults
+                            document.getElementById('tempInput').value = 20;
+                            document.getElementById('weatherSelect').value = 'clear';
+                        }
+
+                        setTimeout(() => {
+                            btn.textContent = '📍 Détecter automatiquement';
+                            btn.disabled = false;
+                        }, 2000);
+                    }, (error) => {
+                        console.error('Geolocation error:', error);
+                        btn.textContent = '✓ Heure mise à jour';
+                        setTimeout(() => {
+                            btn.textContent = '📍 Détecter automatiquement';
+                            btn.disabled = false;
+                        }, 2000);
+                    });
+                } else {
+                    btn.textContent = '✓ Heure mise à jour';
+                    setTimeout(() => {
+                        btn.textContent = '📍 Détecter automatiquement';
+                        btn.disabled = false;
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Auto-detect error:', error);
+                btn.textContent = '✓ Heure mise à jour';
+                setTimeout(() => {
+                    btn.textContent = '📍 Détecter automatiquement';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        async function generateSmartPlaylist() {
+            const btn = document.getElementById('smartGenerateBtn');
+            const resultDiv = document.getElementById('playlistResult');
+            
+            btn.disabled = true;
+            btn.textContent = 'Génération en cours...';
+            resultDiv.innerHTML = '';
+
+            try {
+                const weather = document.getElementById('weatherSelect').value;
+                const temperature = parseInt(document.getElementById('tempInput').value);
+                const time = document.getElementById('timeInput').value;
+                const speed = parseInt(document.getElementById('speedInput').value);
+
+                const response = await fetch(`/api/spotify/generate-smart-playlist?userId=${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        weather,
+                        temperature,
+                        time,
+                        speed
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 403) {
+                        throw new Error('PERMISSIONS');
+                    }
+                    throw new Error('Erreur lors de la génération');
+                }
+                
+                const data = await response.json();
+                
+                // Store the generated playlist data
+                window.generatedPlaylist = data;
+                
+                resultDiv.innerHTML = `
+                    <div class="playlist-result">
+                        <h3>${data.name}</h3>
+                        <p style="color: #b3b3b3; margin-bottom: 15px;">${data.description}</p>
+                        <div style="background: #181818; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                            <p style="color: #1DB954; font-weight: bold; margin-bottom: 10px;">Paramètres de génération:</p>
+                            <p style="color: #b3b3b3; font-size: 0.9em;">Énergie: ${data.parameters.energy} | Valence: ${data.parameters.valence} | Tempo: ${data.parameters.tempo} BPM</p>
+                        </div>
+                        <ul>
+                            ${data.tracks.map((track, i) => `
+                                <li>
+                                    <strong>${i + 1}. ${track.name}</strong><br>
+                                    <span style="font-size: 0.9em;">${track.artist} • ${track.album}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        <button class="save-playlist-btn" onclick="saveToSpotify()">Sauvegarder sur Spotify</button>
+                    </div>
+                `;
+                
+                btn.textContent = '✓ C\'est bon!';
+                setTimeout(() => {
+                    btn.textContent = 'Réessayer';
+                    btn.disabled = false;
+                }, 2000);
+            } catch (error) {
+                console.error('Error generating smart playlist:', error);
+                if (error.message === 'PERMISSIONS') {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            Il faut se reconnecter<br><br>
+                            Clique sur déconnexion en haut à droite et reconnecte-toi.<br>
+                            <button onclick="logout()" style="margin-top: 15px; background: white; color: #ff4757; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold;">Déconnexion</button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div class="error">Erreur lors de la génération de la playlist intelligente</div>`;
+                }
+                btn.textContent = 'Réessayer';
+                btn.disabled = false;
+            }
+        }
+
+        async function generatePlaylist() {
+            const btn = document.getElementById('generateBtn');
+            const resultDiv = document.getElementById('playlistResult');
+            
+            btn.disabled = true;
+            btn.textContent = 'Génération en cours...';
+            resultDiv.innerHTML = '';
+
+            try {
+                const response = await fetch(`/api/spotify/generate-playlist?userId=${userId}`);
+                if (!response.ok) throw new Error('Erreur lors de la génération');
+                
+                const data = await response.json();
+                
+                window.generatedPlaylist = data;
+                
+                resultDiv.innerHTML = `
+                    <div class="playlist-result">
+                        <h3>Playlist générée : ${data.name}</h3>
+                        <p style="color: #b3b3b3; margin-bottom: 15px;">${data.description}</p>
+                        <ul>
+                            ${data.tracks.map((track, i) => `
+                                <li>
+                                    <strong>${i + 1}. ${track.name}</strong><br>
+                                    <span style="font-size: 0.9em;">${track.artist} • ${track.album}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        <button class="save-playlist-btn" onclick="saveToSpotify()">Sauvegarder sur Spotify</button>
+                    </div>
+                `;
+                
+                btn.textContent = 'Playlist créée !';
+                setTimeout(() => {
+                    btn.textContent = 'Générer une nouvelle playlist';
+                    btn.disabled = false;
+                }, 2000);
+            } catch (error) {
+                console.error('Error generating playlist:', error);
+                resultDiv.innerHTML = `<div class="error">Erreur lors de la génération. Réessaye</div>`;
+                btn.textContent = 'Réessayer';
+                btn.disabled = false;
+            }
+        }
+
+        async function saveToSpotify() {
+            if (!window.generatedPlaylist) {
+                alert('Y\'a rien à sauvegarder');
+                return;
+            }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Sauvegarde en cours...';
+
+            try {
+                const trackUris = window.generatedPlaylist.tracks.map(t => t.uri);
+                
+                const response = await fetch(`/api/spotify/save-playlist?userId=${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: window.generatedPlaylist.name,
+                        description: window.generatedPlaylist.description,
+                        trackUris: trackUris
+                    })
+                });
+
+                if (!response.ok) throw new Error('Erreur lors de la sauvegarde');
+                
+                const data = await response.json();
+                
+                btn.textContent = '✓ Sauvegardée !';
+                btn.style.background = '#1DB954';
+                
+                setTimeout(() => {
+                    btn.outerHTML = `<a href="${data.playlistUrl}" target="_blank" class="spotify-link-btn">Ouvrir dans Spotify</a>`;
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error saving playlist:', error);
+                alert('Erreur lors de la sauvegarde sur Spotify');
+                btn.textContent = 'Réessayer';
+                btn.disabled = false;
+            }
+        }
+
+        loadAll();
+    </script>
+</body>
+</html>
